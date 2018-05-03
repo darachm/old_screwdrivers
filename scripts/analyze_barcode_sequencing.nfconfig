@@ -1,0 +1,47 @@
+// This defines what executes the steps. Note the weird dollar sign,
+//   but there's some that are SLURM (so cluster), and some that are
+//   kept local (moving a file).
+
+executor {
+  $slurm {
+    clusterOptions=''
+// I've commented this out, but you can put this into the above
+// options string to get email reports from slurm
+//--mail-type=BEGIN,END,FAIL --mail-user=dhm267@nyu.edu'
+  }
+}
+
+// This defines for processes the default of executing with slurm,
+//   then specifics for different steps. Note that the gunzip
+//   is run local so it doesn't have to wait for a queue.
+process {
+  $gunzip {
+    executor="local"
+  }
+  $barnone {
+    executor="slurm"
+    cpus='1'
+    time='48h'
+    memory='8GB'
+  }
+}
+
+// This stuff is defining the reports and things, so tracing the 
+//   steps, making a report, a timeline, and a DAG of the steps.
+trace {
+  enabled = true
+  file = "reports/nextflow_pipeline_trace.txt"
+  fields = 'task_id,name,status,exit,realtime,%cpu,rss'
+}
+report {
+  enabled = true
+  file = "reports/nextflow_report.html"
+}
+timeline {
+  enabled = true
+  file = "reports/nextflow_timeline.html"
+}
+dag {
+  enabled = true
+  file = "reports/nextflow_dag.png"
+}
