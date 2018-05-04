@@ -4,10 +4,9 @@
 
 executor {
   $slurm {
-    clusterOptions=''
+    clusterOptions='--mail-type=BEGIN,END,FAIL --mail-user=dhm267@nyu.edu'
 // I've commented this out, but you can put this into the above
 // options string to get email reports from slurm
-//--mail-type=BEGIN,END,FAIL --mail-user=dhm267@nyu.edu'
   }
 }
 
