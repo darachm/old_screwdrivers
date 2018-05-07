@@ -1,0 +1,5 @@
+This might not work with the latest `rmarkdown`, because the author
+decided they wanted to introduce a new dependency in 1.9. I mean,
+it's a good idea but it's always painful to make big changes. And 
+sometimes it's worth keeping everything connected on the main branch
+instead of making it a perfect piece of software. Whatever.

@@ -58,7 +58,7 @@ ggplot(datar)+aes(x=prot)+geom_histogram(bins=50)
 
 Both will scramble the caption, so instead do one output plot per chunk.
 
-```{r, plotting_one, depends.on="making_numbers_in_secret", echo=F, cache=T, fig.cap="One"}
+```{r, plotting_one, depends.on="making_numbers_in_secret", echo=F, cache=T, fig.cap="One.  \\label{fig:earlier}"}
 ggplot(datar)+aes(x=mrna)+geom_histogram(bins=50)
 ```
 
@@ -102,7 +102,7 @@ cowplot::plot_grid(g1,g2,labels=c("A","B"),ncol=2)
 
 or taller
 
-```{r, this_is_taller, depends.on="making_numbers_in_secret", echo=F, cache=T, fig.cap="Taller. \\label{fig:taller}",fig.height=6}
+```{r, this_is_taller, depends.on="making_numbers_in_secret", echo=F, cache=T, fig.cap="Taller.",fig.height=6}
 
 cowplot::plot_grid(g1,g2,labels=c("A","B"),ncol=2)
 ```
@@ -120,6 +120,6 @@ the model had a slope with a p-value of $<$
 .
 
 Figure \ref{fig:normgenes} shows that you can ref figures,
-or other ones like number \ref{fig:taller}.
-
+or other ones like number \ref{fig:earlier}.
+Click on them. They're hyperlinks.
 
