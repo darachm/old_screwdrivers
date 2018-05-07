@@ -1,4 +1,6 @@
 
+If it fails due to segfault, just re-run it.
+
 Okay, so this little folder is demonstrating how to use the 
 `clusterProfiler` library to do GO term and GSEA term enrichment for 
 lists of yeast genes, using R.
