@@ -1,0 +1,8 @@
+
+180507:
+  - To start adding the subtree, did 
+    'git remote add subtree-barseq https://darachm@github.com/darachm/gfpFusionScreen.git'
+    then
+    'git subtree add --prefix=barseq subtree-barseq master'
+  - 
+
