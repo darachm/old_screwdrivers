@@ -1,0 +1,81 @@
+---
+title: "Appendix 12 - more supplementary protocol and writeups, or something"
+subtitle: "\"A very long subtitle\""
+author: "Darach Miller, etc."
+date: "2018"
+toc: True
+fontsize: "12pt"
+mainfont: DejaVuSans
+output:
+  pdf_document:
+    fig_width: 5
+    fig_height: 3
+    fig_caption: true
+    includes:  
+      in_header: preamble-latex.tex
+    latex_engine: xelatex
+# This uses the awesome answer here ( https://stackoverflow.com/a/33801326 ) to make it work!!!
+---
+
+# Introduction
+
+Whereas `rmarkdown` is a package that knits using `knitr`, then uses
+`pandoc` to typeset PDFs, sometimes you want to have your figures
+handle a bit different.
+
+## Some numbers
+
+Maybe you want some bunch of numbers[^whatevz].
+
+```{r, making_numbers_in_secret, echo=F, cache=T, fig.cap="Making some numbers and plotting."}
+prot_datar <- rpois(1e4)^10
+mrna_datar <- rpois(1e4)^2
+
+hist(mrna_datar,breaks=100)
+hist(prot_datar,breaks=100)
+```
+
+[^whatevz]: or whatever
+
+## Other numbers
+
+Maybe 2$\mu$L of those, scd6$\Delta$.
+
+Action | Treatment series | Minutes after uracil chase
+---|---|---
++4.5ml 400mM uracil | water (mock upshift) |  0
+Took sample 1 | water |  3.85
+Took sample 2 | water |  6.02
+
+```{r, modeling_in_secret, echo=F, cache=T, fig.cap="Residual whatever, but with a magic \\LaTeX label right here. \\label{fig:normgenes}"}
+
+plot(mrna_datar,prot_datar,type="l")
+
+#theResiduals <- pdat %>% filter(Variable=="residuals")%>%
+#  ggplot()+aes(x=expmin,y=Value,col=treatment)+theme_bw()+
+#  geom_point()+geom_rug(sides="r")+ 
+#  xlab("Minutes after chase")+
+#  ylab("Residuals from that fit")
+#theResiduals
+```
+
+We did an ANCOVA (`aov`/`lm`), and found the effect of treatment
+was associated with a p-value $<$ `r c(z[[1]])[[5]][[2]]` and
+the p-value associated with time estimated as "1",
+so it does not appear that the residuals depend on time or
+treatment. 
+
+`r signif(c(zeroMod[3])/c(zeroMod[2])*100,3)`% increase in the rate.
+
+How do the normalizations compare on a per-gene basis? 
+Figure \ref{fig:normgenes} shows the normalized data for several genes,
+on the left is the direct, within sample normalization 
+and on the right is this smoothing between samples using a 
+log-linear model.
+
+What does this mean for our estimates of destabilization?
+What effect sizes are estimated, and how do they compare to this
+inflation of `r signif(c(zeroMod[3])/c(zeroMod[2])*100,3)`%? 
+Figure \ref{fig:changeRateDist} shows the distribution of the fold changes in stability:
+
+
