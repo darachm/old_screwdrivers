@@ -4,5 +4,8 @@
     'git remote add subtree-barseq https://darachm@github.com/darachm/gfpFusionScreen.git'
     then
     'git subtree add --prefix=barseq subtree-barseq master'
-  - 
+  - To pull:
+    'git subtree pull --prefix=barseq subtree-barseq master'
+    to push:
+    'git subtree push --prefix=barseq subtree-barseq master'
 
