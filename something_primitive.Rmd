@@ -7,7 +7,7 @@ toc: True
 fontsize: "12pt"
 mainfont: DejaVuSans
 output:
-  pdf_document:
+  rmarkdown::pdf_document:
     fig_width: 5
     fig_height: 3
     fig_caption: true
@@ -17,29 +17,70 @@ output:
 # This uses the awesome answer here ( https://stackoverflow.com/a/33801326 ) to make it work!!!
 ---
 
+```{r,libraries,echo=F,warning=F,error=F}
+library(ggplot2)
+```
+
 # Introduction
 
+It might be nice to customize this a bit, so you can use rmarkdown
+documents to direct output out as supplementary files, PDFs for 
+publication.
 Whereas `rmarkdown` is a package that knits using `knitr`, then uses
-`pandoc` to typeset PDFs, sometimes you want to have your figures
-handle a bit different.
+`pandoc` to typeset PDFs, you're going to have to use a few
+\LaTeX\space tricks to make this work.
+
+For example, figures with float all
+over the place. Which is cool, but maybe you want your figures 
+exactly where they appear in the text, sorta, and are willing to
+tolerate whitespace to get them there. By using the 
+`preamble=latex.tex` in the YAML header, you can get around this.
 
 ## Some numbers
 
-Maybe you want some bunch of numbers[^whatevz].
+Maybe you want some bunch of numbers[^whatevz] with a footnote. 
+Make them in un-echoed chunks. 
 
-```{r, making_numbers_in_secret, echo=F, cache=T, fig.cap="Making some numbers and plotting."}
-prot_datar <- rpois(1e4)^10
-mrna_datar <- rpois(1e4)^2
+```{r, making_numbers_in_secret, echo=F, cache=T}
+datar <- data.frame(
+  prot=rnorm(1e4,mean=100)^2,
+  mrna=rnorm(1e4,mean=10)^2
+  )
+```
 
-hist(mrna_datar,breaks=100)
-hist(prot_datar,breaks=100)
+Then do plots one at a time. Make sure you're just outputting one
+plot, one per chunk and per `fig.cap`.
+
+```{r, plotting_both, depends.on="making_numbers_in_secret", echo=F, cache=T, fig.cap="both"}
+ggplot(datar)+aes(x=mrna)+geom_histogram(bins=50)
+ggplot(datar)+aes(x=prot)+geom_histogram(bins=50)
+```
+
+Both will scramble the caption, so instead do one output plot per chunk.
+
+```{r, plotting_one, depends.on="making_numbers_in_secret", echo=F, cache=T, fig.cap="One"}
+ggplot(datar)+aes(x=mrna)+geom_histogram(bins=50)
+```
+
+```{r, plotting_other, depends.on="making_numbers_in_secret", echo=F, cache=T, fig.cap="Other"}
+ggplot(datar)+aes(x=prot)+geom_histogram(bins=50)
+```
+
+Or use something like `cowplot`, then you can use letter refs in 
+the caption.
+
+```{r, plotting_both_for_real, depends.on="making_numbers_in_secret", echo=F, cache=T, fig.cap="both A and B are there"}
+cowplot::plot_grid(ggplot(datar)+aes(x=mrna)+geom_histogram(bins=50),
+  ggplot(datar)+aes(x=prot)+geom_histogram(bins=50),
+  labels=c("A","B"),ncol=2)
 ```
 
 [^whatevz]: or whatever
 
 ## Other numbers
 
-Maybe 2$\mu$L of those, scd6$\Delta$.
+Maybe 2$\mu$L of those, scd6$\Delta$. $$\text{Math} = a*x + b $$.
+Here's a table.
 
 Action | Treatment series | Minutes after uracil chase
 ---|---|---
@@ -47,35 +88,38 @@ Action | Treatment series | Minutes after uracil chase
 Took sample 1 | water |  3.85
 Took sample 2 | water |  6.02
 
-```{r, modeling_in_secret, echo=F, cache=T, fig.cap="Residual whatever, but with a magic \\LaTeX label right here. \\label{fig:normgenes}"}
+Also, let's say you want to make it wider.
 
-plot(mrna_datar,prot_datar,type="l")
+```{r, modeling_in_secret, depends.on="making_numbers_in_secret", echo=F, cache=T, fig.cap="Residual whatever, but with a magic \\LaTeX\\space labeling right here. \\label{fig:normgenes}",fig.width=8}
+g1 <- ggplot(datar)+aes(x=mrna,y=prot)+geom_point()
 
-#theResiduals <- pdat %>% filter(Variable=="residuals")%>%
-#  ggplot()+aes(x=expmin,y=Value,col=treatment)+theme_bw()+
-#  geom_point()+geom_rug(sides="r")+ 
-#  xlab("Minutes after chase")+
-#  ylab("Residuals from that fit")
-#theResiduals
+some_model <- lm(data=datar, log(prot)~log(mrna) )
+f <- function(x,this_model=some_model) { exp(log(x)*coef(this_model)[2]+coef(this_model)[1]) }
+g2 <- g1+stat_function(fun=f,col="red")
+
+cowplot::plot_grid(g1,g2,labels=c("A","B"),ncol=2)
 ```
 
-We did an ANCOVA (`aov`/`lm`), and found the effect of treatment
-was associated with a p-value $<$ `r c(z[[1]])[[5]][[2]]` and
-the p-value associated with time estimated as "1",
-so it does not appear that the residuals depend on time or
-treatment. 
+or taller
 
-`r signif(c(zeroMod[3])/c(zeroMod[2])*100,3)`% increase in the rate.
+```{r, this_is_taller, depends.on="making_numbers_in_secret", echo=F, cache=T, fig.cap="Taller. \\label{fig:taller}",fig.height=6}
 
-How do the normalizations compare on a per-gene basis? 
-Figure \ref{fig:normgenes} shows the normalized data for several genes,
-on the left is the direct, within sample normalization 
-and on the right is this smoothing between samples using a 
-log-linear model.
+cowplot::plot_grid(g1,g2,labels=c("A","B"),ncol=2)
+```
 
-What does this mean for our estimates of destabilization?
-What effect sizes are estimated, and how do they compare to this
-inflation of `r signif(c(zeroMod[3])/c(zeroMod[2])*100,3)`%? 
-Figure \ref{fig:changeRateDist} shows the distribution of the fold changes in stability:
+You can do that with the `fig.width` or `fig.height` options.
+
+Note in this text, you can also add custom dependencies like with
+`depends.on` so that changing an earlier will re-run everything
+that depends on it.
+
+You can access the variables in-line of the text, so you can say
+the model had a slope with a p-value of $<$ 
+`r summary(some_model)$coefficients[2,4]` or 
+`r signif(summary(some_model)$coefficients[2,4],3)`.
+.
+
+Figure \ref{fig:normgenes} shows that you can ref figures,
+or other ones like number \ref{fig:taller}.
 
 
