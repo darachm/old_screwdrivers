@@ -10,7 +10,7 @@ sample_index = Channel.fromPath("sample_barcodes_robinson2014.txt")
 strain_index = Channel.fromPath("mutant_barcodes_smith2009revision.txt")
 mismatches_to_try = [0,1,2,3]
 
-file("./archive").mkdirs()
+file("./tmp").mkdirs()
 file("./reports").mkdirs()
 
 process gunzip {
@@ -23,7 +23,7 @@ process gunzip {
 }
 
 process barnone {
-  publishDir "archive", mode: 'copy'
+  publishDir "tmp", mode: 'copy'
   input:
     file fastq
     file sample_index
