@@ -1,0 +1,38 @@
+% From: https://stackoverflow.com/a/33801326
+\usepackage{pdfpages}
+
+\usepackage{float}
+\let\origfigure\figure
+\let\endorigfigure\endfigure
+\renewenvironment{figure}[1][2] {
+  \expandafter\origfigure\expandafter[H]
+  } { \endorigfigure }
+
+\usepackage[utf8]{inputenc}
+\usepackage{pgffor}
+\usepackage{graphicx}
+
+\usepackage{tikz}
+\usepackage{pgfmath}
+\usetikzlibrary{arrows,positioning,shapes,patterns,decorations} 
+\tikzstyle{every picture}+=[remember picture]
+\tikzset{>=stealth'
+  ,rrect/.style={ rectangle, rounded corners, draw=black, very thick,    
+  ,minimum height=2em, text centered }
+  ,arect/.style={ rectangle, rounded corners, draw=black, very thick
+  ,minimum height=2em, text centered , anchor=west}
+  ,srect/.style={ rectangle, draw=black, thick
+  ,minimum height=2em, text centered }
+  ,ribo/.style={ circle, rounded corners, draw=black, very thick, text centered }
+  ,textz/.style={ font=\scriptsize,align=left }
+  ,snakey/.style={decorate, decoration={snake,segment length=0.75cm}}
+  }
+
+\hypersetup{
+%  colorlinks=false
+%  ,allbordercolors={0 0 0}
+%  ,pdfborderstyle={/S/U/W 1}}
+  colorlinks   = true,    % Colours links instead of ugly boxes
+  urlcolor     = blue,    % Colour for external hyperlinks
+  linkcolor    = black,    % Colour of internal links
+}
