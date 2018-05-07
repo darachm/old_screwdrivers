@@ -8,4 +8,5 @@
     'git subtree pull --prefix=barseq subtree-barseq master'
     to push:
     'git subtree push --prefix=barseq subtree-barseq master'
+  - Used this strategy to start up repositories and add on the `term-enrichment` and the `rmd_to_pdf` repos.
 
