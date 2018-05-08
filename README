@@ -1,0 +1,21 @@
+This repo tracks subtrees of a couple of example analyses or code 
+snippets that might be useful.
+
+- barseq :
+    - 
+- rmd_to_pdf :
+    - This is an example of setting up a rmarkdown-`render`'d 
+      document so that it makes a nice PDF. It's intended for
+      supplementary materials.
+
+      Change into the directory and enter `make all` to demonstrate.
+
+- term-enrichment :
+    - This an example of using the `clusterProfiler` package to
+      look at GO term enrichment and GSEA. There's nothing about
+      plotting, just the output.
+
+      Change into the directory and enter `make all` to demonstrate.
+      You will need to unzip the file [here](https://osf.io/fb3m6/).
+      It may segfault, just re-run the command to finish it.
+
