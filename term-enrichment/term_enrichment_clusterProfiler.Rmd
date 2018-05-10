@@ -94,14 +94,14 @@ measurements, and then make a `term_gene_mapping` for
 ```{r, split-fake-data, cache=T}
 fake_datar_full <- makeFakeData(bias=0.5,terms_to_bias=c("A","B","C"))
 
-datar <- setNames(object=fake_datar_full$Measurement,
+fake_datar <- setNames(object=fake_datar_full$Measurement,
     nm=fake_datar_full$GeneID) %>%
   sort(.,decreasing=T)
 
 term_gene_mapping <- fake_datar_full %>% select(.,Term,GeneID) %>%
   mutate_all(.,.funs=as.character) 
 
-head(datar)
+head(fake_datar)
 head(term_gene_mapping)
 ```
 
@@ -154,7 +154,7 @@ Let's talk about the arguments:
 
 ```{r, top-slice, cache=T}
 enricher_result <- clusterProfiler::enricher(
-  gene=names(datar[1:500]),
+  gene=names(fake_datar[1:500]),
   pvalueCutoff=0.05,
   qvalueCutoff=0.05,
   pAdjustMethod="fdr",
@@ -177,12 +177,12 @@ What if it's a much more slight bias? Note I just re-generate the
 
 ```{r, slight-effect-enricher, cache=T}
 fake_datar_full <- makeFakeData(bias=0.3,terms_to_bias=c("A","B","C"))
-datar <- setNames(object=fake_datar_full$Measurement,
+fake_datar <- setNames(object=fake_datar_full$Measurement,
     nm=fake_datar_full$GeneID) %>%
   sort(.,decreasing=T)
 
 enricher_result <- clusterProfiler::enricher(
-  gene=names(datar[1:500]),
+  gene=names(fake_datar[1:500]),
   pvalueCutoff=0.05,
   qvalueCutoff=0.05,
   pAdjustMethod="fdr",
@@ -235,7 +235,7 @@ for better (faint biological signal) or worse (technical bias).
 
 ```{r, slight-effect-gsea, cache=T}
 GSEA_result <- clusterProfiler::GSEA(
-  geneList=sort(datar,decreasing=T),
+  geneList=sort(fake_datar,decreasing=T),
   nPerm=1e6,
   pvalueCutoff=0.05,
   pAdjustMethod="fdr",
@@ -356,37 +356,38 @@ ggplot(datar)+aes(x=PostShift_Mean)+geom_histogram(bins=50)+
 
 Having done so, we can look for terms enriched in that set. So we're
 going to use joins to make our term mapper, and test in a couple of
-ways.
+ways. We're going to try first the whole map, then the GO slim set.
 
 ```{r,categoricalGOenrichment,cache=T}
+gene_list <- as.vector(unlist(na.omit(
+    datar[datar$PostShift_Mean>7.5,"Systematic"]
+  )))
 
-
-enricher_real <- clusterProfiler::enricher(
-  gene=datar[datar$PostShift_Mean>7.5,"Systematic"],
-  pvalueCutoff=0.10,
-  qvalueCutoff=0.10,
+enricher_full <- clusterProfiler::enricher(
+  gene=gene_list,
+  pvalueCutoff=0.50,
+  qvalueCutoff=0.50,
   pAdjustMethod="fdr",
-  universe=term_gene_mapping$GeneID,
   minGSSize=1,maxGSSize=500,
-  TERM2GENE=term_gene_mapping,
-  TERM2NAME=NA)
-as.tibble(enricher_result)
+  universe=terms_per_gene$Systematic,
+  TERM2GENE=terms_per_gene %>%select(Description,Systematic)
+  )
+as.tibble(enricher_full)
 
- <- clusterProfiler::enricher(
-  gene=TopPostShift_Entrez,
-  universe=Background_Entrez,
-  OrgDb=org.Sc.sgd.db::org.Sc.sgd.db,
-  ont=i,
+enricher_slim <- clusterProfiler::enricher(
+  gene=gene_list,
+  pvalueCutoff=0.50,
+  qvalueCutoff=0.50,
   pAdjustMethod="fdr",
-  qvalueCutoff=0.20,
-  minGSSize=2,maxGSSize=200)
-}
+  minGSSize=1,maxGSSize=500,
+  universe=go_slim_tibble$Systematic,
+  TERM2GENE=go_slim_tibble %>%select(Term,Systematic)
+  )
+as.tibble(enricher_slim)
+
 ```
 
-At each step, this looks for the enrichment of each type of ontology
-in that set. Then, we'll push that around into one big table,
-and then we're going to do some `tidy`/`purrr` stuff with the `map`
-calls to get the common names back again.
+need to tidy outs
 
 ```{r,categoricalGOtable,cache=T}
 #categoricalGOtable <- bind_rows(CategoricalGO) %>% as_tibble %>% 
