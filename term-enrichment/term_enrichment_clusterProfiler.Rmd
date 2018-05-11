@@ -7,27 +7,35 @@ date: "`r Sys.Date()`"
 After measuring some value for many genes (perhaps genome-wide), 
 you may find yourself wondering "what biological knowledge is 
 associated with the values I am measuring?" One strategy would be
-to look at each gene from the top, and see what GO terms are 
-associated. Another would be to define a top
+to look at each gene from the top, and see what knowledge (or perhaps
+GO terms) are associated with that gene. 
+Another would be to define a top
 of the list set and see what is in common with those genes, compared
-to the others (a GO term enrichment test). Another is to use a GSEA
-analysis to see what terms are associated with one end of the list
+to the others (ex: GO term enrichment test). Another is to use a GSEA
+analysis[^gsea] to see what terms are associated with one end of the list
 or the other.
 
+[^gsea]: Details of GSEA 
+[here](https://bioconductor.org/packages/release/bioc/vignettes/DOSE/inst/doc/GSEA.html),
+described by the author of the implementation we use. Very informative!
+
 Here, we'll demonstrate how to do this in R using the nice package
-`clusterProfiler` that implements these analyses at multiple levels of
+[`clusterProfiler`](https://bioconductor.org/packages/release/bioc/html/clusterProfiler.html)
+that implements these analyses at multiple levels of
 complexity. We'll start with a toy data-set, then work our way up.
 
 A vingette of the package is [here](https://www.bioconductor.org/packages/release/bioc/vignettes/clusterProfiler/inst/doc/clusterProfiler.html),
 and is already quite good. The purpose of this document is to 
 demonstrate its use more simply with regards to
 the toy dataset to explore the fundamental functions, and to
-specifically demonstrate its use in yeast. We don't use the
+specifically demonstrate its use in yeast. If you're curious, you
+might find the simulations to be useful for developing and testing
+your understanding of the process. We don't use the
 custom visualizations provided, and instead brew our own.
-This also builds off the really nice 
+This document also builds off the nice but short
 [blog post](http://guangchuangyu.github.io/2015/05/use-clusterprofiler-as-an-universal-enrichment-analysis-tool/)
-essentially doing the same thing of arbitrary mapping, but using
-human datasets.
+demonstrating arbitrary mapping, but I wanted to use toy datasets to
+play with it a bit more.
 
 Also, there's just a lot of good stuff about GO terms and 
 bioinformatics tools on his blog, so things like
@@ -56,8 +64,8 @@ First, I'll make a function that gives us some fake data:
 
 ```{r, make-fake-data, cache=T}
 
-makeFakeData <- function(bias=0,terms=toupper(letters),
-                         genes_per_term=200,
+makeFakeData <- function(bias=0,bias_sd=0,
+                         terms=toupper(letters),genes_per_term=200,
                          terms_to_bias=c("A","B","C")) {
   all_data <- data.frame(
     Term=sort(rep(terms,genes_per_term))
@@ -67,7 +75,7 @@ makeFakeData <- function(bias=0,terms=toupper(letters),
   all_data$Measurement <- sapply(all_data$Term,
     function(x){
       if (x %in% terms_to_bias) { 
-        return( rnorm(n=1,mean=0+bias,sd=1) )
+        return( rnorm(n=1,mean=0+bias,sd=1+bias_sd) )
       } else { 
         return( rnorm(n=1,mean=0,sd=1) )
       }
@@ -95,8 +103,7 @@ measurements, and then make a `term_gene_mapping` for
 fake_datar_full <- makeFakeData(bias=0.5,terms_to_bias=c("A","B","C"))
 
 fake_datar <- setNames(object=fake_datar_full$Measurement,
-    nm=fake_datar_full$GeneID) %>%
-  sort(.,decreasing=T)
+    nm=fake_datar_full$GeneID) 
 
 term_gene_mapping <- fake_datar_full %>% select(.,Term,GeneID) %>%
   mutate_all(.,.funs=as.character) 
@@ -106,9 +113,9 @@ head(term_gene_mapping)
 ```
 
 Now with fake data,
-we're going to use the `enricher()` and `gseGO()` functions here to
-see how enriched these terms are. We'll start by using `enricher`
-on the top ten genes in the list. I've specified as many options
+we're going to use the `enricher()` function here to
+see how enriched these terms are. 
+I've specified as many options
 as possible, because that's good practice for these kinds of things.
 Let's talk about the arguments:
 
@@ -134,7 +141,7 @@ Let's talk about the arguments:
 #Look it up in the paper paywalled
 
 `universe`
-  ~ This is the background set, so I just put int all the terms.
+  ~ This is the background set, so I just put in all the terms.
 
 `minGSSize`
   ~ This is the minimum considered gene set size...
@@ -154,7 +161,7 @@ Let's talk about the arguments:
 
 ```{r, top-slice, cache=T}
 enricher_result <- clusterProfiler::enricher(
-  gene=names(fake_datar[1:500]),
+  gene=names(sort(fake_datar,decreasing=T)[0:500]),
   pvalueCutoff=0.05,
   qvalueCutoff=0.05,
   pAdjustMethod="fdr",
@@ -163,9 +170,19 @@ enricher_result <- clusterProfiler::enricher(
   TERM2GENE=term_gene_mapping,
   TERM2NAME=NA)
 enricher_result 
+```
 
-str(enricher_result)
+You can coerce the result to a data.frame or tibble to get a table
+of values back:
+
+```{r,tibbled,cache=T}
 as.tibble(enricher_result)
+```
+
+And here's what the object really looks like under `str`.
+
+```{r,strd,cache=T}
+str(enricher_result)
 ```
 
 We see that there's a result of our enriched terms, and that if
@@ -178,11 +195,10 @@ What if it's a much more slight bias? Note I just re-generate the
 ```{r, slight-effect-enricher, cache=T}
 fake_datar_full <- makeFakeData(bias=0.3,terms_to_bias=c("A","B","C"))
 fake_datar <- setNames(object=fake_datar_full$Measurement,
-    nm=fake_datar_full$GeneID) %>%
-  sort(.,decreasing=T)
+    nm=fake_datar_full$GeneID)
 
 enricher_result <- clusterProfiler::enricher(
-  gene=names(fake_datar[1:500]),
+  gene=names(sort(fake_datar,decreasing=T)[1:500]),
   pvalueCutoff=0.05,
   qvalueCutoff=0.05,
   pAdjustMethod="fdr",
@@ -246,6 +262,76 @@ as.tibble(GSEA_result)
 ```
 
 It takes longer, but you don't have to pick a cut-off. 
+What about if it's biased towards the other end of the set?
+Below, I crank up the bias so I can run it with lower 
+permutations[^perm].
+
+[^perm]: Your sensitivity depends on permutations! If you're looking
+for p-values of 0.05 with 1000 terms, then you'd need to have at
+least enough sampling to estimate that something is 0.05/1000 rare.
+That means you need at least 20,000 permutations. More is better, but
+of course slower.
+
+```{r, slight-neg-effect-gsea, cache=T}
+fake_datar_full <- makeFakeData(bias=-2,terms_to_bias=c("A","B","C"))
+fake_datar <- setNames(object=fake_datar_full$Measurement,
+    nm=fake_datar_full$GeneID)
+
+GSEA_result <- clusterProfiler::GSEA(
+  geneList=sort(fake_datar,decreasing=T),
+  nPerm=1e5,
+  pvalueCutoff=0.05,
+  pAdjustMethod="fdr",
+  minGSSize=1,maxGSSize=500,
+  TERM2GENE=term_gene_mapping,
+  TERM2NAME=NA)
+as.tibble(GSEA_result) 
+```
+
+So a negative enrichment score. I believe this is for terms that are
+de-enriched from one side. To test this, I've got a `bias_sd`
+parameter in the simulation that lets me tweak the spread of the 
+numbers. I'm going to make that data, plot it, and then we'll
+look at enrichment from both sides.
+
+```{r, slight-squish-effect-gsea, cache=T}
+fake_datar_full <- makeFakeData(bias=-0.5,bias_sd=-0.99,
+  terms_to_bias=c("A","B","C"))
+g(fake_datar_full)
+
+fake_datar <- setNames(object=fake_datar_full$Measurement,
+    nm=fake_datar_full$GeneID)
+
+GSEA_result_high <- clusterProfiler::GSEA(
+  geneList=sort(fake_datar,decreasing=T),
+  nPerm=1e5,
+  pvalueCutoff=0.05,
+  pAdjustMethod="fdr",
+  minGSSize=1,maxGSSize=500,
+  TERM2GENE=term_gene_mapping,
+  TERM2NAME=NA)
+as.tibble(GSEA_result_high) 
+
+GSEA_result_low <- clusterProfiler::GSEA(
+  geneList=sort(-fake_datar,decreasing=T),
+  nPerm=1e5,
+  pvalueCutoff=0.05,
+  pAdjustMethod="fdr",
+  minGSSize=1,maxGSSize=500,
+  TERM2GENE=term_gene_mapping,
+  TERM2NAME=NA)
+as.tibble(GSEA_result_low) 
+```
+
+So a significant score is that it's biased to one side or the other
+on rankings, and the sign of the score is which side it's enriched
+on. So you should be able to do one test (lots of permutations) and
+that'll test both sides of the enrichment.
+
+Note that `P` is shifted up in enrichment, just by chance. P-value
+cutoffs exist for a reason, and are not foolproof. Multiple lines of
+evidence are better than one well-tuned experiment, and robustness
+of the effect matters more.
 
 # Use with real GO terms
 
@@ -270,7 +356,10 @@ subject to choices along the way, remember
 [Stamp's law](https://en.wikipedia.org/wiki/Josiah_Stamp,_1st_Baron_Stamp#Quotes).
 
 Here, I read these in and parse them into 
-[tibbles](http://tibble.tidyverse.org/).
+[tibbles](http://tibble.tidyverse.org/). Sorry that it's so 
+convoluted without documentation. If you're keen on learning, you
+could step each one through and read about each step and test it
+to learn a bit of munge-fu. Or just copy-paste.
 
 ```{r,get-tables-input,cache=T,message=F,error=F,warning=F}
 terms_per_gene <- read_tsv("data/saccharomyces_cerevisiae.gff",
@@ -356,223 +445,141 @@ ggplot(datar)+aes(x=PostShift_Mean)+geom_histogram(bins=50)+
 
 Having done so, we can look for terms enriched in that set. So we're
 going to use joins to make our term mapper, and test in a couple of
-ways. We're going to try first the whole map, then the GO slim set.
+ways. We're going to try first the whole map, then the GO slim set,
+then complexes.
 
-```{r,categoricalGOenrichment,cache=T}
+Note that we use `intersect` to only consider the genes that are
+in the `datar` dataset.
+
+```{r,real-categorical-enrichment,cache=T}
 gene_list <- as.vector(unlist(na.omit(
     datar[datar$PostShift_Mean>7.5,"Systematic"]
   )))
 
 enricher_full <- clusterProfiler::enricher(
   gene=gene_list,
-  pvalueCutoff=0.50,
-  qvalueCutoff=0.50,
+  pvalueCutoff=0.10,
+  qvalueCutoff=0.10,
   pAdjustMethod="fdr",
   minGSSize=1,maxGSSize=500,
-  universe=terms_per_gene$Systematic,
+  universe=intersect(terms_per_gene$Systematic,datar$Systematic),
   TERM2GENE=terms_per_gene %>%select(Description,Systematic)
   )
 as.tibble(enricher_full)
 
 enricher_slim <- clusterProfiler::enricher(
   gene=gene_list,
-  pvalueCutoff=0.50,
-  qvalueCutoff=0.50,
+  pvalueCutoff=0.10,
+  qvalueCutoff=0.10,
   pAdjustMethod="fdr",
   minGSSize=1,maxGSSize=500,
-  universe=go_slim_tibble$Systematic,
+  universe=intersect(go_slim_tibble$Systematic,datar$Systematic),
   TERM2GENE=go_slim_tibble %>%select(Term,Systematic)
   )
 as.tibble(enricher_slim)
 
+enricher_comp <- clusterProfiler::enricher(
+  gene=gene_list,
+  pvalueCutoff=0.10,
+  qvalueCutoff=0.10,
+  pAdjustMethod="fdr",
+  minGSSize=1,maxGSSize=500,
+  universe=intersect(go_complex_tibble$Systematic,datar$Systematic),
+  TERM2GENE=go_complex_tibble %>%select(Complex,Systematic)
+  )
+as.tibble(enricher_comp)
 ```
 
-need to tidy outs
+We can see that the slim categories are very general. 
 
-```{r,categoricalGOtable,cache=T}
-#categoricalGOtable <- bind_rows(CategoricalGO) %>% as_tibble %>% 
-#    # First we bind rows and make it a tibble
-#  select(Type,ID,Description,qvalue,
-#    Count,geneID) %>%
-#    # Then we pick the variables we want
-#  arrange(Type,-qvalue) %>%
-#  mutate(geneIDz=map(geneID,str_split,"/",simplify=T))%>%
-#  mutate(commonz=map(geneIDz,function(x){
-#    clusterProfiler::bitr(x,toType="SGD",fromType="ENTREZID"
-#      ,OrgDb=org.Sc.sgd.db::org.Sc.sgd.db,drop=T) %>% as_tibble() %>%
-#      left_join(SystematicToSGDIDmapper%>%rename(SGD=SGDID),by="SGD")%>%
-#      pull(Common)
-#    }))%>%
-#  select(-geneID,-geneIDz)%>%
-#  mutate(commonz=unlist(map(commonz,str_c,collapse=",")))
-#```
-#
-#```{r,categoricalGOprint,cache=F}
-#write_lines("#
-## Supplementary Table
-##
-## Results of that categorical GO analysis. Put a description
-## here please.
-##
-## Key:
-## Type of enrichment , GO term ID , GO term , q-value , 
-##   size of GO term count , common names driving this",
-#  path="output_table_categorical.csv")
-#
-#categoricalGOtable %>% 
-#  write_csv(path="output_table_categorical.csv",append=T)
-#```
-#
-## GSEA using custom terms
-#
-#Okay, but what about GSEA?
-#
-#So, let's sort the names by that variables, and then see who's 
-#enriched. 
-#
-#
-#First we do one, as a stripped down example. Then we move to doing
-#lots in a loop. 
-#For both, we're going to make our sorted gene list:
-#
-#```{r,sortedGeneList,cache=T}
-## First, we make a named list of values, and sort by it
-#this_gene_list <- 
-#  datar[order(datar[["PostShift_Mean"]],decreasing=T),] %>%
-#    # First, it is sorted by a variable. 
-#    # This non-tidy evaluation is used 
-#    # because I could not find an easy way to evaluate 
-#    # it programmatically within tidverse's NSE choice.
-#  left_join(SystematicToSGDIDmapper,by="Systematic")%>%
-#    # Then it is joined to a mapper table defined above, to map
-#    # to the SGD ID
-#  {setNames(.[["PostShift_Mean"]],nm=.[["SGDID"]])}%>%na.omit()%>%c()
-#    # Then this is used to name the vector of values of 
-#    # PostShift_Mean as the SGD ID's. This is na.omited, then c'd
-#    # into a plain named vector.
-#
-#head(this_gene_list)
-#```
-#
-#```{r,single,dependson="sortedGeneList",cache=T}
-#singleRun <- clusterProfiler::GSEA(
-#  geneList=this_gene_list,
-#    # This is then piped into GSEA function as the gene list
-#  TERM2GENE=SGDGOSlim[,c("X6","X3")],
-#    # This provides a mapping of term and gene ID (SGDID)
-#  TERM2NAME=SGDGOTerms[,c("GOID","X2")],
-#    # This provides a mapping of term ID to term description
-#  minGSSize=3,maxGSSize=500,
-#    # This controls the tested gene set sizes
-#  pAdjustMethod="fdr",
-#    # This sets the method of p-value adjusting
-#  pvalueCutoff=0.5,
-#    # This sets the p-value cut off
-#  nPerm=1e4,seed="seedy"
-#    # This sets the permutations for the boostrapped p-value, and
-#    # the random seed
-#  )@result %>% as_tibble() 
-#
-#head(singleRun)
-#```
-#
-#At the end there, it's pulled out using the `@result` accessor from
-#the return object, then made into a tibble. I forgot what the `@` 
-#thing is called, but it's like a `$`, but fundamentally different
-#in a way that doesn't impact us lay user.
-#
-#I set up a parameter of number of permutations. 
-#`1e6` takes *forever* to run. So test it out with high p.adjust and
-#low permutes, then move it up to ~`1e6` or so. You need high
-#permutations to make claims about stuff rare enough to survive
-#p-value adjustment as significant, so test on low significance and
-#then let it run in looking for real significance.
-#
-#Since we did this once, we can do this multiple times with a loop.
-#Note this includes `system.time`ing.
-#
-#```{r,multiple,dependson="sortedGeneList",cache=T,eval=T}
-#nPermutations <- 1e4
-#
-## A list for results holding
-#GSEAResults <- list()
-#
-#for (varz in c("PostShift_Mean","PreShift_Mean","Change_Mean")) {
-#  message(varz)
-#  message(" took ... ")
-#  print(system.time(
-#    {
-#    this_gene_list <- datar[order(datar[[varz]],decreasing=T),] %>%
-#      left_join(SystematicToSGDIDmapper,by="Systematic")%>%
-#      {setNames(.[[varz]],nm=.[["SGDID"]])}%>%na.omit()%>%c()
-#    GSEAResults[[varz]] <- clusterProfiler::GSEA(
-#      geneList=this_gene_list,
-#      TERM2GENE=SGDGOSlim[,c("X6","X3")],
-#      TERM2NAME=SGDGOTerms[,c("GOID","X2")],
-#      minGSSize=3,maxGSSize=500,
-#      pAdjustMethod="fdr",
-#      pvalueCutoff=0.3,seed="seedy",
-#      nPerm=nPermutations
-#      )@result %>% as_tibble() %>% mutate(Variable=varz)
-#    }
-#  ))
-#}
-#```
-#
-#Once done, we can print this sucker out as a CSV.
-#
-#```{r,tableOut,cache=T}
-#gseGOtable <- bind_rows(GSEAResults) %>% as_tibble %>% 
-#    # First we bind rows and make it a tibble
-#  select(Variable,ID,Description,enrichmentScore,p.adjust
-#    ,setSize,core_enrichment) %>%
-#    # Then we pick the variables we want
-#  arrange(Variable,-enrichmentScore) %>%
-#  mutate(sgdIDz=map(core_enrichment,str_split,"/",simplify=F)) %>%
-#    # This is weird. It's taking the core_enrichment thing, 
-#    # splitting it into a vector
-#  mutate(commonz=map(sgdIDz,function(x){
-#    # Then it maps each vector into this anonymous function
-#    tibble(SGD=unlist(x))%>%
-#      # unlists it out of a list of a vector into a vector
-#      left_join(SystematicToSGDIDmapper%>%rename(SGD=SGDID),by="SGD")%>%
-#        # then joins it against the mapper tibble from before
-#      pull(Common)
-#        # because then we can pull out a vector of common names
-#    })) %>%
-#  select(-sgdIDz,-core_enrichment)%>%
-#  mutate(commonz=map(commonz,str_replace_na))%>%
-#    # we have to remove the NA values, because mysteriously this thing
-#    # has some of those
-#  mutate(commonz=unlist(map(commonz,str_c,collapse=",")))
-#    # then collapse with a comma for reading
-#```
-#
-#```{r,printOut,cache=T}
-#write_lines("#
-## Supplementary Table
-##
-## Results of that gene set enrichment analysis. Put a description
-## here please.
-##
-## Key:
-## Variable sorted by , GO term ID , GO term , enrichment score , adjusted p-value , size of GO term set , common names"
-#  ,path="output_table_GSEA.csv")
-#
-#gseGOtable %>% 
-#  write_csv(path="output_table_GSEA.csv",append=T)
-#```
-#
-#You can also map this to KEGG terms as well. Use 
-#`clusterProfiler::enrichKEGG` similarly, but be mindful of the 
-#`keyType` and translation of different identifiers.
-#
-#
-#```{r}
-#sessionInfo()
-#```
-#
-#
-#
-#
+We can also look using GSEA. This takes a long time, so I'm
+breaking these into independently cached chunks.
+
+```{r, real-gsea-enrichment-1, cache=T}
+genes_ordered <- sort(
+  na.omit(setNames(datar$PostShift_Mean, nm=datar$Systematic)),
+  decreasing=T)
+
+nperms <- 1e5
+```
+
+```{r, real-gsea-enrichment-2, cache=T}
+GSEA_full <- clusterProfiler::GSEA(
+  geneList=genes_ordered,
+  nPerm=nperms,
+  pvalueCutoff=0.10,
+  pAdjustMethod="fdr",
+  minGSSize=1,maxGSSize=500,
+  TERM2GENE=terms_per_gene %>%select(Description,Systematic)
+  )
+as.tibble(GSEA_full)
+```
+
+```{r, real-gsea-enrichment-3, cache=T}
+GSEA_slim <- clusterProfiler::GSEA(
+  geneList=genes_ordered,
+  nPerm=nperms,
+  pvalueCutoff=0.10,
+  pAdjustMethod="fdr",
+  minGSSize=1,maxGSSize=500,
+  TERM2GENE=go_slim_tibble %>%select(Term,Systematic)
+  )
+as.tibble(GSEA_slim)
+```
+
+```{r, real-gsea-enrichment-4, cache=T}
+GSEA_comp <- clusterProfiler::GSEA(
+  geneList=genes_ordered,
+  nPerm=nperms,
+  pvalueCutoff=0.10,
+  pAdjustMethod="fdr",
+  minGSSize=1,maxGSSize=500,
+  TERM2GENE=go_complex_tibble %>%select(Complex,Systematic)
+  )
+as.tibble(GSEA_comp)
+```
+
+## Some plots
+
+I think the table (or tibble) is the most important thing, but if you
+want to visualize it then the author had made a few tools for that.
+I found that `barplot` and `emapplot` were not findable on my system.
+The below examples are just lifted from the BioC vingette, so more
+details there.
+
+```{r,someplots,cache=T}
+DOSE::dotplot(GSEA_full)
+DOSE::cnetplot(GSEA_full,categorySize="qvalue",foldChange=genes_ordered)
+```
+
+One of the handiest might be to go ahead and take the ID of the gene
+set, and use the `gseaPlot` to look at how that enrichment got
+calculated:
+
+```{r,moreplots,cache=T}
+as.tibble(GSEA_full)
+DOSE::gseaplot(GSEA_full,geneSetID="Lsm1-7-Pat1 complex")
+DOSE::gseaplot(GSEA_full,geneSetID="negative regulation of gluconeogenesis")
+```
+
+Anyways, there's a lot more on the vingette
+[here](https://www.bioconductor.org/packages/release/bioc/vignettes/clusterProfiler/inst/doc/clusterProfiler.html#visualization-1).
+
+# Further reading
+
+This author has made some 
+[pretty nifty tools](https://guangchuangyu.github.io/software/).
+Check out the documentation, now that you're started on using it. 
+
+You may have trouble in parsing a large list of terms for finding 
+what's the interesting patterns. If you save the `enricherResult`
+object that's returned from the analyses, you should be able to
+explore it using the [`GOSemSim`](https://guangchuangyu.github.io/software/GOSemSim/)
+package, for collapsing terms based on semantic similarity.
+I've not used that (just manually interpreted), so if someone can
+figure that out it would be helpful to add your notes to this 
+document! And edit!
+
+```{r}
+sessionInfo()
 ```
