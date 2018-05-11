@@ -16,11 +16,8 @@ snippets that might be useful.
 - term-enrichment :
 
     - This an example of using the `clusterProfiler` package to
-      look at GO term enrichment and GSEA. There's nothing about
-      plotting, just the output.
-
-      Change into the directory and enter `make all` to demonstrate.
-      You will need to unzip the file https://osf.io/fb3m6/ to get
-      the `data/` directory. It may segfault, just re-run the 
-      command to finish it.
-
+      look at term enrichment and GSEA. It uses simulations on
+      a toy example to explore the concept (a bit), then does so
+      using GO terms and complexes from SGD. A minimal introduction,
+      useful for being able to do GSEA using these tools on arbitrary
+      labels/terms.
